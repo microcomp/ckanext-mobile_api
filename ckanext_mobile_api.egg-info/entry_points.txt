@@ -1,0 +1,5 @@
+
+        [ckan.plugins]
+        # Add plugins here, e.g.
+        mobile_api=ckanext.mobile_api.plugin:MobileApi
+    
