@@ -205,7 +205,7 @@ def dataset_list(context, data_dict=None):
         helper['display_name'] = dataset['title']
         helper['id'] = dataset['id']
         helper['organization'] = {'name':dataset['organization']['title'], 'id':dataset['organization']['id']}
-        helper['resources'] = [{'name':x['name'], 'description':x['description'], 'format':x['format'], 'id':x['id']} for x in dataset['resources']]
+        helper['resources'] = [{'name':x['name'], 'description':x['description'], 'format':x['format'], 'id':x['id'], 'url':x['url']} for x in dataset['resources']]
         result.append(helper)
     search_results['results'] = result
     return search_results
