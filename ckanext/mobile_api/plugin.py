@@ -9,7 +9,8 @@ from ckan.common import _, c
 import mobile_api
 
 class MobileApi(plugins.SingletonPlugin):
-	''' '''
-	plugins.implements(plugins.interfaces.IActions)
-	def get_actions(self):
-		return {'m_package_search':mobile_api.dataset_list}
+    ''' '''
+    plugins.implements(plugins.interfaces.IActions)
+    def get_actions(self):
+        return {'m_package_search':mobile_api.dataset_list,
+                'm_package_show':mobile_api.package_show}
