@@ -201,8 +201,12 @@ def dataset_list(context, data_dict=None):
         helper['organization'] = {'name':dataset['organization']['title'], 'id':dataset['organization']['id']}
         #helper['resources'] = [{'name':x['name'], 'description':x['description'], 'format':x['format'], 'id':x['id'], 'url':x['url']} for x in dataset['resources']]
         helper['resource_type'] = [x for x in set([ x['format'] for x in dataset['resources']])]
-        helper['tags'] = [{"display_name":x["display_name"], "id":x["id"]} for x in dataset['tags']]
+        helper['tags'] = [x["display_name"] for x in dataset['tags']]
         helper["metadata_created"] = dataset["metadata_created"]
+        try:
+            helper["publish_date"] = dataset["publish_date"]
+        except KeyError:
+            helper["publish_date"] = None
         helper["metadata_modified"] = dataset["metadata_modified"]
         helper["num_resources"] = len(dataset["resources"])
         helper["license_title"] = dataset["license_title"]
@@ -249,7 +253,6 @@ def package_show(context, data_dict=None):
             pass
     for i in range(len(all_data["resources"])):
         try:
-
             all_data["resources"][i].pop("resource_group_id")
             all_data["resources"][i].pop("data_correctness")
             all_data["resources"][i].pop("maintainer")
