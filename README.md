@@ -76,9 +76,9 @@ id: "xxx",
 description: "xxx",
 format: "CSV",
 last_modified: "2016-03-04T14:03:42.550208",
-name: "Úseky a agendy verejnej správy",
+name: "xxx",
 created: "2016-01-19T13:18:20.434992",
-url: "http://edem.microcomp.sk/dataset/074321c8-f88a-461b-aff1-a413dd33269f/resource/abb9ed5f-a99f-4c5c-96c3-97f64d7c53c0/download/data.csv"
+url: "xxx"
 }
 ],
 num_resources: 1,
