@@ -11,7 +11,7 @@ import ckan.lib.base as base
 import ckan.lib.helpers as h
 import ckan.lib.navl.dictization_functions as df
 import ckan.plugins as p
-from ckan.common import _, c
+from ckan.common import _, g, c
 import ckan.plugins.toolkit as toolkit
 import urllib2
 import logging
@@ -36,6 +36,7 @@ import ckan.lib.search as search
 import ckan.lib.plugins as lib_plugins
 import ckan.lib.activity_streams as activity_streams
 import ckan.new_authz as new_authz
+import ckan.model as model
 
 _validate = ckan.lib.navl.dictization_functions.validate
 _table_dictize = ckan.lib.dictization.table_dictize
@@ -56,7 +57,6 @@ _text = sqlalchemy.text
 def dataset_list(context, data_dict=None):
     '''
     '''
-    # sometimes context['schema'] is None
     schema = (context.get('schema') or
               logic.schema.default_package_search_schema())
     data_dict, errors = _validate(data_dict, schema, context)
@@ -64,22 +64,14 @@ def dataset_list(context, data_dict=None):
     data_dict.pop('__extras', None)
     if errors:
         raise ValidationError(errors)
-
     model = context['model']
     session = context['session']
-
     _check_access('package_search', context, data_dict)
-
     data_dict['extras'] = data_dict.get('extras', {})
     for key in [key for key in data_dict.keys() if key.startswith('ext_')]:
         data_dict['extras'][key] = data_dict.pop(key)
-
-    # check if some extension needs to modify the search params
     for item in plugins.PluginImplementations(plugins.IPackageController):
         data_dict = item.before_search(data_dict)
-
-    # the extension may have decided that it is not necessary to perform
-    # the query
     abort = data_dict.get('abort_search', False)
 
     if data_dict.get('sort') in (None, 'rank'):
@@ -89,29 +81,19 @@ def dataset_list(context, data_dict=None):
     if not abort:
         data_source = 'data_dict' if data_dict.get('use_default_schema',
             False) else 'validated_data_dict'
-        # return a list of package ids
         data_dict['fl'] = 'id {0}'.format(data_source)
-
-        # If this query hasn't come from a controller that has set this flag
-        # then we should remove any mention of capacity from the fq and
-        # instead set it to only retrieve public datasets
         fq = data_dict.get('fq', '')
         if not context.get('ignore_capacity_check', False):
             fq = ' '.join(p for p in fq.split(' ')
                             if not 'capacity:' in p)
             data_dict['fq'] = fq + ' capacity:"public"'
-
-        # Pop these ones as Solr does not need them
         extras = data_dict.pop('extras', None)
 
         query = search.query_for(model.Package)
         query.run(data_dict)
-
-        # Add them back so extensions can use them on after_search
         data_dict['extras'] = extras
 
         for package in query.results:
-            # get the package object
             package, package_dict = package['id'], package.get(data_source)
             pkg_query = session.query(model.PackageRevision)\
                 .filter(model.PackageRevision.id == package)\
@@ -120,15 +102,10 @@ def dataset_list(context, data_dict=None):
                     model.PackageRevision.current == True
                 ))
             pkg = pkg_query.first()
-
-            ## if the index has got a package that is not in ckan then
-            ## ignore it.
             if not pkg:
                 log.warning('package %s in index but not in database' % package)
                 continue
-            ## use data in search index if there
             if package_dict:
-                ## the package_dict still needs translating when being viewed
                 package_dict = json.loads(package_dict)
                 if context.get('for_view'):
                     for item in plugins.PluginImplementations( plugins.IPackageController):
@@ -150,8 +127,6 @@ def dataset_list(context, data_dict=None):
         'results': results,
         'sort': data_dict['sort']
     }
-
-    # Transform facets into a more useful data structure.
     restructured_facets = {}
     for key, value in facets.items():
         restructured_facets[key] = {
@@ -178,35 +153,160 @@ def dataset_list(context, data_dict=None):
             new_facet_dict['count'] = value_
             restructured_facets[key]['items'].append(new_facet_dict)
     search_results['search_facets'] = restructured_facets
-
-    # check if some extension needs to modify the search results
     for item in plugins.PluginImplementations(plugins.IPackageController):
         search_results = item.after_search(search_results,data_dict)
-
-    # After extensions have had a chance to modify the facets, sort them by
-    # display name.
     for facet in search_results['search_facets']:
         search_results['search_facets'][facet]['items'] = sorted(
                 search_results['search_facets'][facet]['items'],
                 key=lambda facet: facet['display_name'], reverse=True)
     result = []
     facets__ = {}
-    facets__['organization'] = logic.get_action('organization_list')(context,{})
+    o_list = logic.get_action('organization_list')(context,{})
+    #full_org_data = [ logic.get_action("organization_show")(context, {"id":x}) for x in o_list]
+    full_org_data = [ model.Session.query(model.Group).filter(model.Group.name == x).first()  for x in o_list]
+    #facets__['organization']= [{"display_name":x["display_name"], "id":x["id"]} for x in full_org_data ]
+    facets__['organization']= [{"display_name":x.display_name, "id":x.id} for x in full_org_data ]
+
     facets__['tags'] = logic.get_action('tag_list')(context,{})
     formats = set()
+    license_type = []
+    all_license_types = logic.get_action("license_list")(context, {})
+    for license in all_license_types:
+        license_type.append({"title":license["title"], "id":license["id"]})
     for i in 'abcdefghijklmnopqrstuvwxyz':
         for j in logic.get_action('format_autocomplete')(context, {'q':i}):
             formats.add(j)
-    facets__['res_format'] = [x for x in formats]      
-    #TODO --TAG and FORMATS
-    search_results['facets'] = facets__
+    facets__['res_format'] = [x for x in formats]
+    facets__['license_type'] = [x for x in license_type]      
+    facet_titles = [('organization', u'Organiz\xe1cie'), ('tags', u'Tagy'), ('res_format', u'Form\xe1ty'), ('license_id', u'Licencia')]
+    context = {'model': model, 'session': model.Session,
+                       'user': c.user or c.author, 'auth_user_obj': c.userobj}
+    data_dict = {
+        'q': '*:*',
+        'facet.field': g.facets,
+        'rows': 4,
+        'start': 0,
+        'sort': 'views_recent desc',
+        'fq': 'capacity:"public"'
+    }
+    query = logic.get_action('package_search')(
+        context, data_dict)
+
+    search_results['facets'] =  query['search_facets'] #facets__
+    search_results['facets'].pop('groups')
     for dataset in search_results['results']:
         helper = {}
         helper['display_name'] = dataset['title']
         helper['id'] = dataset['id']
         helper['organization'] = {'name':dataset['organization']['title'], 'id':dataset['organization']['id']}
-        helper['resources'] = [{'name':x['name'], 'description':x['description'], 'format':x['format'], 'id':x['id'], 'url':x['url']} for x in dataset['resources']]
+        #helper['resources'] = [{'name':x['name'], 'description':x['description'], 'format':x['format'], 'id':x['id'], 'url':x['url']} for x in dataset['resources']]
+        helper['resource_type'] = [x for x in set([ x['format'] for x in dataset['resources']])]
+        helper['tags'] = [{"display_name":x["display_name"], "id":x["id"]} for x in dataset['tags']]
+        helper["metadata_created"] = dataset["metadata_created"]
+        helper["metadata_modified"] = dataset["metadata_modified"]
+        helper["num_resources"] = len(dataset["resources"])
+        helper["license_title"] = dataset["license_title"]
+        author = model.Session.query(model.User).filter(model.User.id == dataset["author"]).first()
+        if author == None:
+            helper["author"] =dataset["author"]
+        else:
+            helper["author"] = author.display_name
+
         result.append(helper)
     search_results['results'] = result
     return search_results
+
+@toolkit.side_effect_free
+def package_show(context, data_dict=None):
+    dd = {'id':data_dict['id']}
+    all_data = logic.get_action("package_show")(context,dd)
+    author = model.Session.query(model.User).filter(model.User.id == all_data["author"]).first()
+    if author == None:
+        all_data['author'] =all_data["author"]
+    else:
+        all_data['author'] = author.display_name
+    try:
+        all_data.pop("maintainer")
+        all_data.pop("relationships_as_object")
+        all_data.pop("private")
+        all_data.pop("maintainer_email")
+        all_data.pop("revision_timestamp")
+        all_data.pop("author_email")
+        all_data.pop("state")
+        all_data.pop("version")
+        all_data.pop("spatial")
+        all_data.pop("creator_user_id")
+        all_data.pop("type")
+        all_data.pop("tracking_summary")
+        all_data.pop("groups")
+        all_data.pop("relationships_as_subject")
+        all_data.pop("isopen")
+        all_data.pop("url")
+        all_data.pop("owner_org")
+        all_data.pop("license_url")
+        all_data.pop("revision_id")
+    except KeyError:
+            pass
+    for i in range(len(all_data["resources"])):
+        try:
+
+            all_data["resources"][i].pop("resource_group_id")
+            all_data["resources"][i].pop("data_correctness")
+            all_data["resources"][i].pop("maintainer")
+            all_data["resources"][i].pop("periodicity")
+            all_data["resources"][i].pop("cache_last_updated")
+            all_data["resources"][i].pop("revision_timestamp")
+            all_data["resources"][i].pop("webstore_last_updated")
+            all_data["resources"][i].pop("datastore_active")
+            all_data["resources"][i].pop("valid_from")
+            all_data["resources"][i].pop("size")
+            all_data["resources"][i].pop("state")
+            all_data["resources"][i].pop("transformed")
+            all_data["resources"][i].pop("schema")
+            all_data["resources"][i].pop("status")
+            all_data["resources"][i].pop("periodicity_description")
+            all_data["resources"][i].pop("hash")
+            all_data["resources"][i].pop("validity")
+            all_data["resources"][i].pop("tracking_summary")
+            all_data["resources"][i].pop("revision_id")
+            all_data["resources"][i].pop("url_type")
+            all_data["resources"][i].pop("active_to")
+            all_data["resources"][i].pop("data_correctness_description")
+            all_data["resources"][i].pop("validity_description")
+            all_data["resources"][i].pop("mimetype")
+            all_data["resources"][i].pop("cache_url")
+            all_data["resources"][i].pop("valid_to")
+            all_data["resources"][i].pop("webstore_url")
+            all_data["resources"][i].pop("mimetype_inner")
+            all_data["resources"][i].pop("position")
+            all_data["resources"][i].pop("active_from")
+            all_data["resources"][i].pop("resource_type")
+            all_data["resources"][i].pop("license_id")
+        except KeyError:
+            pass
+    for i in range(len(all_data["tags"])):
+        try:
+            all_data["tags"][i].pop("vocabulary_id")
+            #all_data["tags"][i].pop("name")
+            all_data["tags"][i].pop("revision_timestamp")
+            #all_data["tags"][i].pop("id")
+            all_data["tags"][i].pop("state")
+        except KeyError:
+            pass
+    for i in range(len(all_data["organization"])):
+        try:
+            all_data["organization"][i].pop("created")
+            all_data["organization"][i].pop("name")
+            all_data["organization"][i].pop("revision_timestamp")
+            all_data["organization"][i].pop("is_organization")
+            all_data["organization"][i].pop("state")
+            all_data["organization"][i].pop("state")
+            all_data["organization"][i].pop("image_url")
+            all_data["organization"][i].pop("revision_id")
+            all_data["organization"][i].pop("type")
+            all_data["organization"][i].pop("approval_status")
+        except KeyError:
+            pass
+
+    return all_data
 
