@@ -13,4 +13,6 @@ class MobileApi(plugins.SingletonPlugin):
     plugins.implements(plugins.interfaces.IActions)
     def get_actions(self):
         return {'m_package_search':mobile_api.dataset_list,
-                'm_package_show':mobile_api.package_show}
+                'm_package_show':mobile_api.package_show,
+                'm_organization_list':mobile_api.m_organization_list,
+                'm_organization_show':mobile_api.m_organization_show}
