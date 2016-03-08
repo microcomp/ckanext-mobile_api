@@ -249,6 +249,7 @@ def package_show(context, data_dict=None):
         all_data.pop("owner_org")
         all_data.pop("license_url")
         all_data.pop("revision_id")
+        all_data["display_name"] = all_data.pop("title")
     except KeyError:
             pass
     for i in range(len(all_data["resources"])):
@@ -313,3 +314,50 @@ def package_show(context, data_dict=None):
 
     return all_data
 
+@toolkit.side_effect_free
+def m_organization_list(context, data_dict=None):
+    org_list = logic.get_action("organization_list")(context, data_dict)
+    result = []
+    logging.warning(org_list)
+    result = [logic.get_action("organization_show")(context, {'id':x, "include_datasets":False}) for x in org_list ]
+    logging.warning(result)
+    for i in range(len(result)):
+        try:
+            result[i].pop("users")
+            result[i].pop("approval_status")
+            result[i].pop("state")
+            result[i].pop("revision_id")
+            result[i].pop("groups")
+            result[i].pop("type")
+            result[i].pop("tags")
+            result[i].pop("name")
+            result[i].pop("display_name")
+            result[i].pop("is_organization")
+            result[i].pop("extras")
+            result[i].pop("description")
+            result[i].pop("image_display_url")
+            result[i].pop("created")
+        except KeyError:
+            pass
+    return result
+
+@toolkit.side_effect_free
+def m_organization_show(context, data_dict):
+    data_dict['include_datasets'] = False
+    result = logic.get_action("organization_show")(context, data_dict)
+    try:
+        result.pop("users")
+        result.pop("image_display_url")
+        result.pop("approval_status")
+        result.pop("is_organization")
+        result.pop("extras")
+        result.pop("groups")
+        result.pop("revision_id")
+        result.pop("type")
+        result.pop("tags")
+        result.pop("name")
+
+    except KeyError:
+        pass
+
+    return result
