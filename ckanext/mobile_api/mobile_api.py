@@ -53,6 +53,7 @@ _func = sqlalchemy.func
 _desc = sqlalchemy.desc
 _case = sqlalchemy.case
 _text = sqlalchemy.text
+_get_or_bust = logic.get_or_bust
 @toolkit.side_effect_free
 def dataset_list(context, data_dict=None):
     '''
@@ -222,7 +223,7 @@ def dataset_list(context, data_dict=None):
 
 @toolkit.side_effect_free
 def package_show(context, data_dict=None):
-    dd = {'id':data_dict['id']}
+    dd = {'id':_get_or_bust(data_dict, 'id')}
     all_data = logic.get_action("package_show")(context,dd)
     author = model.Session.query(model.User).filter(model.User.id == all_data["author"]).first()
     if author == None:
