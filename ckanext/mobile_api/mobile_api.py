@@ -60,6 +60,7 @@ def dataset_list(context, data_dict=None):
     data_dict["facet.field"] = ["organization", "tags", "res_format", "license_id"]
     result = logic.get_action("package_search")(context, data_dict)
     for i in range(len(result["results"])):
+        
         try:
         	result["results"][i].pop("author_email")
         except KeyError:
@@ -248,42 +249,144 @@ def package_show(context, data_dict=None):
         all_data.pop("owner_org")
         all_data.pop("license_url")
         all_data.pop("revision_id")
-        all_data["display_name"] = all_data.pop("title")
+        try:
+            if(all_data["display_name"] == "" or all_data["display_name"] == None):
+                all_data["display_name"] = all_data.pop("title")
+        except KeyError:
+            all_data["display_name"] = all_data.pop("title")
+            pass
     except KeyError:
             pass
     for i in range(len(all_data["resources"])):
         try:
             all_data["resources"][i].pop("resource_group_id")
+        except KeyError:
+            pass
+        try:
+            all_data["resources"][i].pop("last_modified")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("data_correctness")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("maintainer")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("periodicity")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("cache_last_updated")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("revision_timestamp")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("webstore_last_updated")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("datastore_active")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("valid_from")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("size")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("state")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("transformed")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("schema")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("status")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("periodicity_description")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("hash")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("validity")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("tracking_summary")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("revision_id")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("url_type")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("active_to")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("data_correctness_description")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("validity_description")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("mimetype")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("cache_url")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("valid_to")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("webstore_url")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("mimetype_inner")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("position")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("active_from")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("resource_type")
+        except KeyError:
+            pass
+        try:    
             all_data["resources"][i].pop("license_id")
         except KeyError:
             pass
@@ -296,21 +399,47 @@ def package_show(context, data_dict=None):
             all_data["tags"][i].pop("state")
         except KeyError:
             pass
-    for i in range(len(all_data["organization"])):
-        try:
-            all_data["organization"][i].pop("created")
-            all_data["organization"][i].pop("name")
-            all_data["organization"][i].pop("revision_timestamp")
-            all_data["organization"][i].pop("is_organization")
-            all_data["organization"][i].pop("state")
-            all_data["organization"][i].pop("state")
-            all_data["organization"][i].pop("image_url")
-            all_data["organization"][i].pop("revision_id")
-            all_data["organization"][i].pop("type")
-            all_data["organization"][i].pop("approval_status")
-        except KeyError:
-            pass
-
+    
+    try:
+        all_data["organization"].pop("created")
+    except KeyError:
+        pass
+    try:    
+        all_data["organization"]["name"] = all_data["organization"]["title"]
+    except KeyError:
+        pass
+    try:    
+        all_data["organization"].pop("revision_timestamp")
+    except KeyError:
+        pass
+    try:    
+        all_data["organization"].pop("is_organization")
+    except KeyError:
+        pass
+    try:    
+        all_data["organization"].pop("state")
+    except KeyError:
+        pass
+    try:    
+        all_data["organization"].pop("state")
+    except KeyError:
+        pass
+    try:    
+        all_data["organization"].pop("image_url")
+    except KeyError:
+        pass
+    try:    
+        all_data["organization"].pop("revision_id")
+    except KeyError:
+        pass
+    try:    
+        all_data["organization"].pop("type")
+    except KeyError:
+        pass
+    try:    
+        all_data["organization"].pop("approval_status")
+    except KeyError:
+        pass
     return all_data
 
 @toolkit.side_effect_free
